@@ -3,7 +3,7 @@ import Sidebar from "./Sidebar.jsx";
 import Header from "./Header.jsx";
 
 function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -15,13 +15,25 @@ function App() {
   ];
 
   return (
-    <div style={{ display: "flex" }}>
-      <Sidebar menuItems={menuItems} isOpen={isSidebarOpen} />
-      <div style={{ flex: 1 }}>
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        menuItems={menuItems}
+        isOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header toggleSidebar={toggleSidebar} />
-        <main style={{ padding: "20px" }}>
-          <h2>Welcome to FrozenPOS</h2>
-          <p>Please select your Food...</p>
+
+        <main className="flex-1 p-6 overflow-auto">
+          <h2 className="text-3xl font-bold mb-4 text-gray-800">
+            Welcome to FrozenPOS
+          </h2>
+          <p className="text-gray-700">
+            Select an option from the sidebar using the hamburger menu.
+          </p>
         </main>
       </div>
     </div>
