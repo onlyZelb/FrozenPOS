@@ -1,140 +1,174 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { API_URL } from "../config/constant";
 
-import React, { useState } from "react";
-
-const Login = ({ onSuccess }) => {
+export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [serverError, setServerError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const validate = () => {
-    const e = {};
-    if (!username) e.username = "Username is required";
-    else if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username))
-      e.username = "Invalid username (3-30 chars)";
-    if (!password) e.password = "Password is required";
-    else if (password.length < 6)
-      e.password = "Password must be at least 6 characters";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-  const handleSubmit = async (ev) => {
-    ev.preventDefault();
-    setServerError("");
-    setSuccess("");
-    if (!validate()) return;
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
+  // Validate inputs before submitting
+  function validateFields() {
+    let isValid = true;
+
+    if (!username.trim()) {
+      setUsernameError("Username is required");
+      isValid = false;
+    } else {
+      setUsernameError("");
+    }
+
+    if (!password.trim()) {
+      setPasswordError("Password is required");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    return isValid;
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setError("");
     setLoading(true);
+
+    // Run local validation
+    if (!validateFields()) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch("/api/login", {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setServerError((data && data.message) || "Login failed");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setSuccess("Logged in successfully");
-        if (typeof onSuccess === "function") onSuccess(data);
-      }
+      if (!res.ok) throw new Error("Invalid credentials");
+
+      const data = await res.json();
+
+      // Save token + username
+      login(data.token, data.username);
+
+      navigate("/");
     } catch (err) {
-      setServerError("Network error");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const styles = {
-    container: {
-      maxWidth: 420,
-      margin: "40px auto",
-      padding: 20,
-      border: "1px solid #e6e6e6",
-      borderRadius: 8,
-      fontFamily: "Segoe UI, Roboto, sans-serif",
-    },
-    field: { display: "flex", flexDirection: "column", marginBottom: 12 },
-    label: { marginBottom: 6, fontSize: 14 },
-    input: {
-      padding: 10,
-      fontSize: 14,
-      borderRadius: 4,
-      border: "1px solid #ccc",
-    },
-    error: { color: "#b00020", fontSize: 13, marginTop: 6 },
-    btn: {
-      padding: "10px 14px",
-      fontSize: 15,
-      borderRadius: 6,
-      border: "none",
-      background: "#0366d6",
-      color: "#fff",
-      cursor: "pointer",
-    },
-    smallMuted: { fontSize: 13, color: "#666", marginTop: 8 },
-  };
+  }
 
   return (
-    <div style={styles.container}>
-      <h2 style={{ marginTop: 0 }}>Sign in</h2>
-
-      {serverError && (
-        <div style={{ ...styles.error, marginBottom: 12 }}>{serverError}</div>
-      )}
-      {success && (
-        <div style={{ color: "green", marginBottom: 12 }}>{success}</div>
-      )}
-
-      <form onSubmit={handleSubmit} noValidate>
-        <div style={styles.field}>
-          <label htmlFor="username" style={styles.label}>
-            Username
-          </label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={styles.input}
-            autoComplete="username"
-          />
-          {errors.username && <div style={styles.error}>{errors.username}</div>}
+    <div className="min-h-screen w-full bg-gradient-to-br from-blue-700 via-blue-500 to-blue-400 flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* Top Title Card */}
+        <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-t-2xl p-8 text-center shadow-2xl">
+          <h1 className="text-2xl font-bold text-white drop-shadow">
+            Elvie Frozen Product Store
+          </h1>
+          <p className="text-white/90 mt-1 text-sm">
+            Point of Sale & Inventory Management
+          </p>
         </div>
 
-        <div style={styles.field}>
-          <label htmlFor="password" style={styles.label}>
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={styles.input}
-            autoComplete="current-password"
-          />
-          {errors.password && <div style={styles.error}>{errors.password}</div>}
+        {/* Main Login Card */}
+        <div className="bg-white p-8 rounded-b-2xl shadow-2xl">
+          <h2 className="text-xl font-semibold text-gray-800">Welcome Back</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Login to access your dashboard
+          </p>
+
+          {error && (
+            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-5 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleLogin}>
+            {/* Username Field */}
+            <div>
+              <label className="text-gray-700 text-sm font-medium">
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter username"
+                className={`w-full mt-1 px-4 py-3 border rounded-lg focus:ring-2 outline-none ${
+                  usernameError
+                    ? "border-red-400 focus:ring-red-300"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              />
+
+              {usernameError && (
+                <p className="text-red-600 text-sm mt-1">{usernameError}</p>
+              )}
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label className="text-gray-700 text-sm font-medium">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                className={`w-full mt-1 px-4 py-3 border rounded-lg focus:ring-2 outline-none ${
+                  passwordError
+                    ? "border-red-400 focus:ring-red-300"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              />
+
+              {passwordError && (
+                <p className="text-red-600 text-sm mt-1">{passwordError}</p>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition flex justify-center items-center"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Signing in...
+                </div>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-gray-600 text-sm mt-6">
+            Don't have an account?{" "}
+            <a href="/register" className="text-blue-600 hover:underline font-medium">
+              Create Account
+            </a>
+          </p>
         </div>
 
-        <button type="submit" style={styles.btn} disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-
-        <div style={styles.smallMuted}>
-          Need an account? <a href="/register">Register</a>
-        </div>
-      </form>
+        <p className="text-center text-white/90 text-sm mt-4">
+          © 2024 Elvie Frozen POS. All rights reserved.
+        </p>
+      </div>
     </div>
   );
-};
-
-export default Login;
-
+}

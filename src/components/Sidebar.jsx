@@ -1,16 +1,23 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function Sidebar({ isOpen, toggleSidebar }) {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear token
+    localStorage.removeItem("token");
+
+    // Redirect to login
+    navigate("/login");
+  };
 
   const menuItems = [
     { text: "Home", link: "/", icon: "🏠" },
-    { text: "Dashboard", link: "/Dashboard", icon: "📊" },
+    { text: "Dashboard", link: "/dashboard", icon: "📊" },
     { text: "Profile", link: "/profile", icon: "👤" },
     { text: "Settings", link: "/settings", icon: "⚙️" },
-    { text: "Logout", link: "/logout", icon: "🚪" },
-
   ];
 
   return (
@@ -25,16 +32,29 @@ function Sidebar({ isOpen, toggleSidebar }) {
 
       <nav className="p-5 space-y-3">
         {menuItems.map((item, idx) => (
-          <a
+          <Link
             key={idx}
-            href={item.link}
-            className={`flex items-center space-x-4 text-gray-300 rounded-lg px-4 py-3 transition-all ${location.pathname === item.link ? "bg-gray-800 border-l-4 border-blue-600" : "hover:bg-gray-800"}`}
+            to={item.link}
+            className={`flex items-center space-x-4 text-gray-300 rounded-lg px-4 py-3 transition-all ${
+              location.pathname === item.link
+                ? "bg-gray-800 border-l-4 border-blue-600"
+                : "hover:bg-gray-800"
+            }`}
           >
             <span className="text-xl">{item.icon}</span>
             <span className="font-medium">{item.text}</span>
-          </a>
+          </Link>
         ))}
-      </nav>  
+
+        {/* LOGOUT BUTTON */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center w-full space-x-4 text-gray-300 rounded-lg px-4 py-3 transition-all hover:bg-gray-800"
+        >
+          <span className="text-xl">🚪</span>
+          <span className="font-medium">Logout</span>
+        </button>
+      </nav>
     </aside>
   );
 }
