@@ -1,0 +1,97 @@
+package com.finalproject.frozenpos.Services;
+
+import com.finalproject.frozenpos.Entities.Product;
+import com.finalproject.frozenpos.Exception.ResourceNotFoundException;
+import com.finalproject.frozenpos.Repository.ProductRepository;
+import com.finalproject.frozenpos.DTO.ProductDTO;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+
+@Service
+public class ProductService {
+
+    private final ProductRepository repository;
+    private final String uploadDir = "src/main/resources/static/images/products/";
+
+    public ProductService(ProductRepository repository) {
+        this.repository = repository;
+    }
+
+    @Transactional
+    public List<Product> findAll() {
+        return repository.findAll();
+    }
+
+    @Transactional
+    public Product findById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found"));
+    }
+
+    @Transactional
+    public Product save(ProductDTO dto) {
+        Product product = toEntity(dto);
+        return repository.save(product);
+    }
+
+    @Transactional
+    public Product update(Long id, ProductDTO dto) {
+        Product existing = findById(id);
+
+        existing.setProductName(dto.getProductName());
+        existing.setDescription(dto.getDescription());
+        existing.setProductPoint(dto.getProductPoint());
+        existing.setRetailPrice(dto.getRetailPrice());
+        existing.setWholeSale(dto.getWholeSale());
+        existing.setStockQuantity(dto.getStockQuantity());
+
+        return repository.save(existing);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+
+    @Transactional
+    public void saveProductImage(Long productId, MultipartFile file) throws IOException {
+        Product product = findById(productId);
+
+        Path copyLocation = Paths.get(uploadDir + productId);
+        Files.createDirectories(copyLocation);
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        int lastDot = originalFilename.lastIndexOf('.');
+        if (lastDot > 0) {
+            extension = originalFilename.substring(lastDot);
+        }
+        String newFileName = productId + extension;
+
+        Path filePath = copyLocation.resolve(newFileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        String relativePath = "/images/products/" + productId + "/" + newFileName;
+        product.setImagePath(relativePath); // ✅ save image path
+        repository.save(product);
+    }
+
+    private Product toEntity(ProductDTO dto) {
+        Product product = new Product();
+        product.setProductName(dto.getProductName());
+        product.setDescription(dto.getDescription());
+        product.setRetailPrice(dto.getRetailPrice());
+        product.setWholeSale(dto.getWholeSale());
+        product.setStockQuantity(dto.getStockQuantity());
+        product.setProductPoint(dto.getProductPoint());
+        return product;
+    }
+}
