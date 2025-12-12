@@ -144,10 +144,20 @@ const Inventory = ({ onProductsUpdate }) => {
     localStorage.setItem("archivedProducts", JSON.stringify(archivedData));
   };
 
+  // --- Low Stock Display ---
   const renderStockStatus = (quantity) => {
-    if (!quantity) return <span className="text-red-600 font-bold">OUT OF STOCK</span>;
-    if (quantity < 10) return <span className="text-orange-500 font-semibold">LOW STOCK ({quantity})</span>;
-    return <span>{quantity}</span>;
+    if (!quantity)
+      return <span className="text-red-600 font-bold">OUT OF STOCK</span>;
+    if (quantity < 10)
+      return (
+        <span className="flex items-center justify-end gap-2">
+          <span className="text-orange-500 font-semibold">LOW STOCK</span>
+          <span className="inline-flex items-center justify-center bg-yellow-400 text-white rounded-full w-5 h-5 text-xs font-bold">
+            {quantity}
+          </span>
+        </span>
+      );
+    return <span className="text-right">{quantity}</span>;
   };
 
   const getFormTitle = () => stockEditingProduct
@@ -188,7 +198,7 @@ const Inventory = ({ onProductsUpdate }) => {
           <h3 className="text-lg font-semibold">{getFormTitle()}</h3>
         </div>
 
-        {/* Header Row (Removed Image Column) */}
+        {/* Header Row */}
         <div className="grid grid-cols-12 text-sm font-semibold bg-gray-100 text-gray-700 p-2 border-b border-gray-300">
           <div className="col-span-12 md:col-span-3 text-center">Product Name</div>
           <div className="col-span-12 md:col-span-3 text-center">Description</div>
@@ -268,7 +278,7 @@ const Inventory = ({ onProductsUpdate }) => {
             />
           </div>
 
-          {/* --- Image Upload --- */}
+          {/* Image Upload */}
           <div className="col-span-12 md:col-span-4 mt-3">
             <label htmlFor="imageFile" className="block text-sm font-medium text-gray-700 mb-1 text-center">Product Image</label>
             <input

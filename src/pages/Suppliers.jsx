@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../config/constant";
 
+const LOW_STOCK_THRESHOLD = 10;
+
 const Suppliers = () => {
   const { token } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
@@ -208,13 +210,14 @@ const Suppliers = () => {
               <th className="py-2 px-4 text-left">Email</th>
               <th className="py-2 px-4 text-left">Contact</th>
               <th className="py-2 px-4 text-left">Products Assigned</th>
+              <th className="py-2 px-4 text-left">Stock</th>
               <th className="py-2 px-4 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {suppliers.length === 0 ? (
               <tr>
-                <td colSpan="5" className="text-center py-4">No suppliers found.</td>
+                <td colSpan="6" className="text-center py-4">No suppliers found.</td>
               </tr>
             ) : (
               suppliers.map(supplier => (
@@ -222,17 +225,32 @@ const Suppliers = () => {
                   <td className="py-2 px-4">{supplier.supplierName}</td>
                   <td className="py-2 px-4">{supplier.email}</td>
                   <td className="py-2 px-4">{supplier.phoneNumber}</td>
+
+                  {/* Products */}
                   <td className="py-2 px-4">
                     {supplier.products && supplier.products.length > 0
                       ? supplier.products.map(p => (
-                          <div key={p.id} className="flex justify-between text-sm border-b border-gray-100 py-1">
-                            <span>{p.productName}</span>
-                            <span className="ml-2 font-bold">{p.stockQuantity || 0}</span>
+                          <div key={p.id} className="text-sm border-b border-gray-100 py-1">
+                            {p.productName}
                           </div>
                         ))
                       : <span className="text-gray-400 italic">No products assigned</span>
                     }
                   </td>
+
+                  {/* Stock column */}
+                  <td className="py-2 px-4">
+                    {supplier.products && supplier.products.length > 0
+                      ? supplier.products.map(p => (
+                          <div key={p.id} className={`text-sm border-b border-gray-100 py-1 ${p.stockQuantity < LOW_STOCK_THRESHOLD ? 'text-red-500 font-bold' : 'font-medium'}`}>
+                            {p.stockQuantity || 0}
+                          </div>
+                        ))
+                      : null
+                    }
+                  </td>
+
+                  {/* Actions */}
                   <td className="py-2 px-4 text-center flex gap-2 justify-center">
                     <button onClick={() => handleEdit(supplier)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600">Edit</button>
                     <button onClick={() => handleDelete(supplier.id)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Delete</button>
