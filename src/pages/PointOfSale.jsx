@@ -188,12 +188,11 @@ const PointOfSale = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get(`${API_BASE_URL}/products`, config);
 
-      // Get archived products from localStorage and filter them out
       const archivedData = JSON.parse(localStorage.getItem("archivedProducts") || "{}");
 
       const normalized = response.data
         .map((p) => ({ ...p, stockQuantity: p.stockQuantity ?? 0, archived: archivedData[p.id] || false }))
-        .filter((p) => !p.archived); // <-- remove archived products
+        .filter((p) => !p.archived);
 
       setProducts(normalized);
       setFilteredProducts(normalized);
@@ -229,7 +228,21 @@ const PointOfSale = () => {
     });
   }, []);
 
-  const clearCart = useCallback(() => setCartItems([]), []);
+  const clearCart = useCallback(() => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        const cartItem = cartItems.find((item) => item.id === p.id);
+        return cartItem ? { ...p, stockQuantity: p.stockQuantity + cartItem.quantity } : p;
+      })
+    );
+    setFilteredProducts((prev) =>
+      prev.map((p) => {
+        const cartItem = cartItems.find((item) => item.id === p.id);
+        return cartItem ? { ...p, stockQuantity: p.stockQuantity + cartItem.quantity } : p;
+      })
+    );
+    setCartItems([]);
+  }, [cartItems]);
 
   const handleSearch = (query) => {
     const q = query.toLowerCase();
