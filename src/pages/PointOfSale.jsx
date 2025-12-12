@@ -66,7 +66,7 @@ const CartSummary = ({ cartItems, clearCart, currentUser, refreshProducts }) => 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const saleDto = {
-        cashierId: currentUser.id || 1, 
+        cashierId: currentUser.id || 1,
         paymentMethod: "Cash",
         saleDateTime: new Date(),
         totalAmount: subtotal,
@@ -187,7 +187,14 @@ const PointOfSale = () => {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get(`${API_BASE_URL}/products`, config);
-      const normalized = response.data.map((p) => ({ ...p, stockQuantity: p.stockQuantity ?? 0 }));
+
+      // Get archived products from localStorage and filter them out
+      const archivedData = JSON.parse(localStorage.getItem("archivedProducts") || "{}");
+
+      const normalized = response.data
+        .map((p) => ({ ...p, stockQuantity: p.stockQuantity ?? 0, archived: archivedData[p.id] || false }))
+        .filter((p) => !p.archived); // <-- remove archived products
+
       setProducts(normalized);
       setFilteredProducts(normalized);
     } catch (err) {

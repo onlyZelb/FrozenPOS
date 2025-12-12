@@ -7,6 +7,7 @@ const Inventory = ({ onProductsUpdate }) => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState({
     productName: "",
     description: "",
@@ -19,21 +20,21 @@ const Inventory = ({ onProductsUpdate }) => {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [deleteModal, setDeleteModal] = useState({ visible: false, product: null });
   const [stockEditingProduct, setStockEditingProduct] = useState(null);
   const formRef = useRef(null);
 
-  // --- API CALLS ---
+  // --- Fetch Products ---
   const fetchProducts = async () => {
     try {
       const res = await fetch(`${API_URL}/products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const errorBody = await res.text();
-        throw new Error(errorBody || res.statusText);
-      }
-      const data = await res.json();
+      if (!res.ok) throw new Error(await res.text() || res.statusText);
+      let data = await res.json();
+
+      const archivedData = JSON.parse(localStorage.getItem("archivedProducts") || "{}");
+      data = data.map((p) => ({ ...p, archived: archivedData[p.id] || false }));
+
       setProducts(data);
       setFilteredProducts(data);
       if (onProductsUpdate) onProductsUpdate(data);
@@ -48,15 +49,14 @@ const Inventory = ({ onProductsUpdate }) => {
     if (token) fetchProducts();
   }, [token]);
 
+  // --- Search / Filter ---
   useEffect(() => {
-    setFilteredProducts(
-      searchTerm
-        ? products.filter((p) =>
-            p.productName.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        : products
-    );
-  }, [searchTerm, products]);
+    const filtered = products.filter((p) => {
+      const matchesSearch = p.productName.toLowerCase().includes(searchTerm.toLowerCase());
+      return showArchived ? p.archived && matchesSearch : !p.archived && matchesSearch;
+    });
+    setFilteredProducts(filtered);
+  }, [searchTerm, products, showArchived]);
 
   const resetForm = () => {
     setForm({ productName: "", description: "", basePrice: 0, listPrice: 0, stockQuantity: 0, imagePath: "" });
@@ -96,12 +96,8 @@ const Inventory = ({ onProductsUpdate }) => {
       const url = editingId ? `${API_URL}/products/${editingId}` : `${API_URL}/products`;
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: formData });
-      if (!res.ok) {
-        const errorBody = await res.text();
-        throw new Error(errorBody || res.statusText);
-      }
+      if (!res.ok) throw new Error(await res.text() || res.statusText);
 
-      // 🔴 Reload entire page
       window.location.reload();
     } catch (err) {
       setError(err.message);
@@ -138,34 +134,27 @@ const Inventory = ({ onProductsUpdate }) => {
     formRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // --- Delete Product ---
-  const confirmDelete = async () => {
-    if (!deleteModal.product) return;
-    try {
-      const res = await fetch(`${API_URL}/products/${deleteModal.product.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const errorBody = await res.text();
-        throw new Error(errorBody || res.statusText);
-      }
-      // Reload entire page after delete
-      window.location.reload();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteModal({ visible: false, product: null });
-    }
+  // --- Archive / Return Product ---
+  const toggleArchive = (productId, archived) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, archived: !archived } : p))
+    );
+    const archivedData = JSON.parse(localStorage.getItem("archivedProducts") || "{}");
+    archivedData[productId] = !archived;
+    localStorage.setItem("archivedProducts", JSON.stringify(archivedData));
   };
 
   const renderStockStatus = (quantity) => {
-    if (quantity === 0 || quantity === null || quantity === undefined) return <span className="text-red-600 font-bold">OUT OF STOCK</span>;
+    if (!quantity) return <span className="text-red-600 font-bold">OUT OF STOCK</span>;
     if (quantity < 10) return <span className="text-orange-500 font-semibold">LOW STOCK ({quantity})</span>;
     return <span>{quantity}</span>;
   };
 
-  const getFormTitle = () => stockEditingProduct ? `Quick Stock Update for: ${stockEditingProduct.productName}` : editingId ? `Editing Product: ${form.productName}` : "Add New Product";
+  const getFormTitle = () => stockEditingProduct
+    ? `Quick Stock Update for: ${stockEditingProduct.productName}`
+    : editingId
+    ? `Editing Product: ${form.productName}`
+    : "Add New Product";
 
   const isStockDisabled = editingId && !stockEditingProduct;
   const isStockReadOnly = !editingId;
@@ -177,7 +166,7 @@ const Inventory = ({ onProductsUpdate }) => {
       {successMessage && <div className="bg-green-500 text-white p-3 rounded mb-4 shadow text-center">{successMessage}</div>}
       {error && <div className="bg-red-500 text-white p-3 rounded mb-4 shadow text-center">{error}</div>}
 
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-center gap-4">
         <input
           type="text"
           placeholder="Search products..."
@@ -185,13 +174,21 @@ const Inventory = ({ onProductsUpdate }) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
         />
+        <button
+          onClick={() => setShowArchived(!showArchived)}
+          className={`px-3 py-1 rounded ${showArchived ? "bg-blue-600 text-white" : "bg-gray-300"}`}
+        >
+          {showArchived ? "Show Active" : "Show Archived"}
+        </button>
       </div>
 
+      {/* --- Form Section with Header --- */}
       <div className="bg-white shadow rounded-lg mb-6" ref={formRef}>
         <div className="p-3 bg-gray-200 text-gray-700 rounded-t-lg border-b border-gray-300">
           <h3 className="text-lg font-semibold">{getFormTitle()}</h3>
         </div>
 
+        {/* Header Row (Removed Image Column) */}
         <div className="grid grid-cols-12 text-sm font-semibold bg-gray-100 text-gray-700 p-2 border-b border-gray-300">
           <div className="col-span-12 md:col-span-3 text-center">Product Name</div>
           <div className="col-span-12 md:col-span-3 text-center">Description</div>
@@ -200,12 +197,13 @@ const Inventory = ({ onProductsUpdate }) => {
           <div className="col-span-6 md:col-span-2 text-center">Stock</div>
         </div>
 
+        {/* Form Inputs */}
         <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 p-4 items-end">
           <div className="col-span-12 md:col-span-3">
             <input
               id="productName"
               name="productName"
-              placeholder="Product Name"
+              placeholder="Enter product name"
               value={form.productName}
               onChange={handleChange}
               disabled={!!stockEditingProduct}
@@ -216,7 +214,7 @@ const Inventory = ({ onProductsUpdate }) => {
             <input
               id="description"
               name="description"
-              placeholder="Short description"
+              placeholder="Enter description"
               value={form.description}
               onChange={handleChange}
               disabled={!!stockEditingProduct}
@@ -270,6 +268,7 @@ const Inventory = ({ onProductsUpdate }) => {
             />
           </div>
 
+          {/* --- Image Upload --- */}
           <div className="col-span-12 md:col-span-4 mt-3">
             <label htmlFor="imageFile" className="block text-sm font-medium text-gray-700 mb-1 text-center">Product Image</label>
             <input
@@ -285,9 +284,7 @@ const Inventory = ({ onProductsUpdate }) => {
             )}
           </div>
 
-          <div className="col-span-6 md:col-span-2 mt-3">{/* Empty placeholder */}</div>
-          <div className="col-span-6 md:col-span-3">{/* Empty placeholder */}</div>
-
+          {/* Buttons */}
           <div className="col-span-12 md:col-span-3 flex items-end gap-2">
             {editingId && (
               <button type="button" onClick={resetForm} className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex-grow">Cancel</button>
@@ -330,7 +327,11 @@ const Inventory = ({ onProductsUpdate }) => {
                   <td className="py-2 px-4 text-center flex justify-center gap-2">
                     <button onClick={() => handleStockClick(product)} className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition text-sm">Add stock</button>
                     <button onClick={() => handleEdit(product)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition text-sm">Edit Details</button>
-                    <button onClick={() => setDeleteModal({ visible: true, product })} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm">Delete</button>
+                    <button onClick={() => toggleArchive(product.id, product.archived)}
+                      className={`px-3 py-1 rounded text-sm ${product.archived ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-500 text-white hover:bg-gray-600"}`}
+                    >
+                      {product.archived ? "Return" : "Archive"}
+                    </button>
                   </td>
                 </tr>
               ))
@@ -338,19 +339,6 @@ const Inventory = ({ onProductsUpdate }) => {
           </tbody>
         </table>
       </div>
-
-      {/* Delete Modal */}
-      {deleteModal.visible && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-80 text-center">
-            <p className="mb-4">Are you sure you want to delete <strong>{deleteModal.product.productName}</strong>?</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={confirmDelete} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Yes</button>
-              <button onClick={() => setDeleteModal({ visible: false, product: null })} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 transition">No</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
