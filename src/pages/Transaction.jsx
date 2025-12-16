@@ -7,7 +7,7 @@ const Transactions = () => {
   const { username, firstName, lastName } = useAuth();
   const currentUser = `${firstName || username || ""} ${lastName || ""}`.trim();
 
-  // Function to load sales from localStorage
+  // Load sales from localStorage
   const loadSales = () => {
     const storedSales = JSON.parse(localStorage.getItem('processedSales')) || [];
     setSales(storedSales);
@@ -39,8 +39,6 @@ const Transactions = () => {
               (sum, item) => sum + (item.retailPrice * item.quantity),
               0
             );
-            const tax = subtotal * 0.08;
-            const total = subtotal + tax;
             const cashierName = sale.cashier || currentUser;
 
             return (
@@ -74,19 +72,9 @@ const Transactions = () => {
                   ))}
                 </ul>
 
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax (8%):</span>
-                    <span>{formatCurrency(tax)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-blue-700 text-lg">
-                    <span>Total:</span>
-                    <span>{formatCurrency(total)}</span>
-                  </div>
+                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-blue-700 text-lg">
+                  <span>Total:</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
               </div>
             );
